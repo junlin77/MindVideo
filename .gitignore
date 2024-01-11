@@ -11,6 +11,7 @@ models--runwayml--stable-diffusion-v1-5/
 .cache/
 MindVideo.egg-info/
 notebooks/
+others/
 *.out
 *.npz
 *.ckpt

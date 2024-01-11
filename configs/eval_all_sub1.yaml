@@ -1,8 +1,8 @@
-working_dir: "/path-to-working-dir/"
+working_dir: "./others/logs/sub1"
 cache_dir: "./.cache"
-checkpoint_path: "./pretrains/sub1"
+checkpoint_path: "./others/pretrains/sub1"
 group_name: "eval"
-data_dir: "/path-to-dataset/wen2017"
+data_dir: "./others/wen2017"
 
 dataset: "Wen"
 patch_size: 16

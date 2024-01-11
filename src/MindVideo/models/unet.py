@@ -448,3 +448,31 @@ class UNet3DConditionModel(ModelMixin, ConfigMixin):
         model.load_state_dict(state_dict)
 
         return model
+    
+    
+    @classmethod
+    def from_config_file_2d(cls, pretrained_model_path, subfolder=None):
+        if subfolder is not None:
+            pretrained_model_path = os.path.join(pretrained_model_path, subfolder)
+
+        config_file = os.path.join(pretrained_model_path, 'config.json')
+        if not os.path.isfile(config_file):
+            raise RuntimeError(f"{config_file} does not exist")
+        with open(config_file, "r") as f:
+            config = json.load(f)
+        config["_class_name"] = cls.__name__
+        config["down_block_types"] = [
+            "CrossAttnDownBlock3D",
+            "CrossAttnDownBlock3D",
+            "CrossAttnDownBlock3D",
+            "DownBlock3D"
+        ]
+        config["up_block_types"] = [
+            "UpBlock3D",
+            "CrossAttnUpBlock3D",
+            "CrossAttnUpBlock3D",
+            "CrossAttnUpBlock3D"
+        ]
+
+        model = cls.from_config(config)
+        return model
