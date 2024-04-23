@@ -11,7 +11,12 @@ import matplotlib.pyplot as plt
 import wandb
 import copy
 
-from config import Config_MBM_fMRI
+# Add the parent directory to the Python path
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(parent_dir)
+
+# Now you can import from the config module
+from configs.config import Config_MBM_fMRI
 from dataset import hcp_dataset
 from sc_mbm.mae_for_fmri import MAEforFMRI
 from sc_mbm.trainer import train_one_epoch
@@ -119,7 +124,7 @@ def main(config):
     np.random.seed(config.seed)
 
     # create dataset and dataloader
-    dataset_pretrain = hcp_dataset(path=os.path.join(config.root_path, 'data/HCP/npz'), roi=config.roi, patch_size=config.patch_size,
+    dataset_pretrain = hcp_dataset(path=os.path.join(config.root_path, '/content/drive/MyDrive/HCP/npz'), roi=config.roi, patch_size=config.patch_size,
                 transform=fmri_transform, aug_times=config.aug_times, num_sub_limit=config.num_sub_limit, 
                 include_kam=config.include_kam, include_hcp=config.include_hcp)
    
