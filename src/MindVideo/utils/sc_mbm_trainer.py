@@ -8,7 +8,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, ".."))
 sys.path.append(project_root)
 
-import utils.sc_mbm_utils as ut
+import utils.utils as ut
 
 class NativeScalerWithGradNormCount:
     state_dict_key = "amp_scaler"
@@ -82,7 +82,8 @@ def train_one_epoch(model, data_loader, optimizer, device, epoch,
 
         optimizer.zero_grad()
         with torch.cuda.amp.autocast(enabled=True):
-            loss, pred, _ = model(samples, img_features, valid_idx=valid_idx, mask_ratio=config.mask_ratio)
+            # loss, pred, _ = model(samples, img_features, valid_idx=valid_idx, mask_ratio=config.mask_ratio)
+            loss, pred, _ = model(samples) # adapted for fMRIEncoder.forward
         # loss.backward()
         # norm = torch.nn.utils.clip_grad_norm_(model.parameters(), config.clip_grad)
         # optimizer.step()
