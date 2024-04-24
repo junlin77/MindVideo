@@ -8,9 +8,14 @@ import numpy as np
 from timm.models.layers import Mlp, DropPath
 import torch.nn.functional as F
 from typing import Dict, Optional, Tuple,Callable
-import os
+import os, sys
 import json
 from einops import rearrange
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
+sys.path.append(project_root)
+import utils.utils as ut
 
 if is_xformers_available():
     import xformers
