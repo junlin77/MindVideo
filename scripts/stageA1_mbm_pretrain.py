@@ -18,10 +18,10 @@ sys.path.append(parent_dir)
 # Now you can import from the config module
 from configs.config import Config_MBM_fMRI
 from dataset import hcp_dataset
-from sc_mbm.mae_for_fmri import MAEforFMRI
-from sc_mbm.trainer import train_one_epoch
-from sc_mbm.trainer import NativeScalerWithGradNormCount as NativeScaler
-from sc_mbm.utils import save_model
+from src.MindVideo.models.fmri_encoder import fMRIEncoder
+from src.MindVideo.utils.sc_mbm_trainer import train_one_epoch
+from src.MindVideo.utils.sc_mbm_trainer import NativeScalerWithGradNormCount as NativeScaler
+from src.MindVideo.utils.sc_mbm_utils import save_model
 
 os.environ["WANDB_START_METHOD"] = "thread"
 os.environ['WANDB_DIR'] = "."
