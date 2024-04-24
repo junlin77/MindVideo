@@ -1,9 +1,14 @@
-import math, sys
+import math, sys, os
 import torch
-import sc_mbm_utils as ut
 from torch import inf
 import numpy as np
 import time
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
+sys.path.append(project_root)
+
+import utils.sc_mbm_utils as ut
 
 class NativeScalerWithGradNormCount:
     state_dict_key = "amp_scaler"

@@ -11,11 +11,9 @@ import matplotlib.pyplot as plt
 import wandb
 import copy
 
-# Add the parent directory to the Python path
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
 
-# Now you can import from the config module
 from configs.config import Config_MBM_fMRI
 from dataset import hcp_dataset
 from src.MindVideo.models.fmri_encoder import fMRIEncoder
@@ -136,7 +134,7 @@ def main(config):
 
     # create model
     config.num_voxels = dataset_pretrain.num_voxels
-    model = MAEforFMRI(num_voxels=dataset_pretrain.num_voxels, patch_size=config.patch_size, embed_dim=config.embed_dim,
+    model = fMRIEncoder(num_voxels=dataset_pretrain.num_voxels, patch_size=config.patch_size, embed_dim=config.embed_dim,
                     decoder_embed_dim=config.decoder_embed_dim, depth=config.depth, 
                     num_heads=config.num_heads, decoder_num_heads=config.decoder_num_heads, mlp_ratio=config.mlp_ratio,
                     focus_range=config.focus_range, focus_rate=config.focus_rate, 
