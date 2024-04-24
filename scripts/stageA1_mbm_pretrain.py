@@ -16,7 +16,7 @@ sys.path.append(parent_dir)
 
 from configs.config import Config_MBM_fMRI
 from dataset import hcp_dataset
-from src.MindVideo.models.fmri_encoder import fMRIEncoder
+from src.MindVideo.models.fmri_encoder import MAEforFMRI
 from src.MindVideo.utils.sc_mbm_trainer import train_one_epoch
 from src.MindVideo.utils.sc_mbm_trainer import NativeScalerWithGradNormCount as NativeScaler
 from src.MindVideo.utils.utils import save_model
@@ -134,7 +134,7 @@ def main(config):
 
     # create model
     config.num_voxels = dataset_pretrain.num_voxels
-    model = fMRIEncoder(num_voxels=dataset_pretrain.num_voxels, patch_size=config.patch_size, embed_dim=config.embed_dim,
+    model = MAEforFMRI(num_voxels=dataset_pretrain.num_voxels, patch_size=config.patch_size, embed_dim=config.embed_dim,
                     decoder_embed_dim=config.decoder_embed_dim, depth=config.depth, 
                     num_heads=config.num_heads, decoder_num_heads=config.decoder_num_heads, mlp_ratio=config.mlp_ratio,
                     focus_range=config.focus_range, focus_rate=config.focus_rate, 
