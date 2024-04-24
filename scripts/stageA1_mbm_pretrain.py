@@ -19,7 +19,7 @@ from dataset import hcp_dataset
 from src.MindVideo.models.fmri_encoder import fMRIEncoder
 from src.MindVideo.utils.sc_mbm_trainer import train_one_epoch
 from src.MindVideo.utils.sc_mbm_trainer import NativeScalerWithGradNormCount as NativeScaler
-from src.MindVideo.utils.sc_mbm_utils import save_model
+from src.MindVideo.utils.utils import save_model
 
 os.environ["WANDB_START_METHOD"] = "thread"
 os.environ['WANDB_DIR'] = "."
