@@ -56,9 +56,10 @@ class Config_MBM_finetune(Config_MBM_finetune):
         # Project setting
         self.root_path = '.'
         self.output_path = self.root_path
-        self.kam_path = os.path.join(self.root_path, 'data/Kamitani/npz')
-        self.bold5000_path = os.path.join(self.root_path, 'data/BOLD5000')
-        self.dataset = 'GOD' # GOD  or BOLD5000
+        # self.kam_path = os.path.join(self.root_path, 'data/Kamitani/npz')
+        # self.bold5000_path = os.path.join(self.root_path, 'data/BOLD5000')
+        self.wen_path = os.path.join(self.root_path, "data/Wen")
+        self.dataset = 'Wen' # target fMRI dataset
         self.pretrain_mbm_path = os.path.join(self.root_path, f'pretrains/{self.dataset}/fmri_encoder.pth') 
 
         self.include_nonavg_test = True

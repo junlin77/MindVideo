@@ -11,13 +11,15 @@ import matplotlib.pyplot as plt
 import wandb
 import copy
 
-# own code
-from config import Config_MBM_finetune
-from dataset import create_Kamitani_dataset, create_BOLD5000_dataset
-from sc_mbm.mae_for_fmri import MAEforFMRI
-from sc_mbm.trainer import train_one_epoch
-from sc_mbm.trainer import NativeScalerWithGradNormCount as NativeScaler
-from sc_mbm.utils import save_model
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(parent_dir)
+
+from configs.config import Config_MBM_finetune
+from dataset import create_Wen_dataset
+from src.MindVideo.models.fmri_encoder import MAEforFMRI
+from src.MindVideo.utils.sc_mbm_trainer import train_one_epoch
+from src.MindVideo.utils.sc_mbm_trainer import NativeScalerWithGradNormCount as NativeScaler
+from src.MindVideo.utils.utils import save_model
 
 
 os.environ["WANDB_START_METHOD"] = "thread"
@@ -118,12 +120,9 @@ def main(config):
     model_without_ddp = model
 
     # create dataset and dataloader
-    if config.dataset == 'GOD':
-        _, test_set = create_Kamitani_dataset(path=config.kam_path, patch_size=config_pretrain.patch_size, 
-                                subjects=config.kam_subs, fmri_transform=torch.FloatTensor, include_nonavg_test=config.include_nonavg_test)
-    elif config.dataset == 'BOLD5000':
-        _, test_set = create_BOLD5000_dataset(path=config.bold5000_path, patch_size=config_pretrain.patch_size, 
-                fmri_transform=torch.FloatTensor, subjects=config.bold5000_subs, include_nonavg_test=config.include_nonavg_test)
+    if config.dataset == "Wen":
+        _, test_set = create_Wen_dataset(path=config.bold5000_path, patch_size=config_pretrain.patch_size, 
+                fmri_transform=torch.FloatTensor, subjects=config.bold5000_subs)
     else:
         raise NotImplementedError
 
