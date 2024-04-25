@@ -15,7 +15,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
 
 from configs.config import Config_MBM_fMRI
-from dataset import hcp_dataset
+from src.MindVideo.utils.dataset import hcp_dataset
 from src.MindVideo.models.fmri_encoder import MAEforFMRI
 from src.MindVideo.utils.sc_mbm_trainer import train_one_epoch
 from src.MindVideo.utils.sc_mbm_trainer import NativeScalerWithGradNormCount as NativeScaler
