@@ -15,7 +15,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
 
 from configs.config import Config_MBM_finetune
-from src.MindVideo.utils.dataset import create_Wen_dataset
+from src.MindVideo.utils.dataset import create_Wen_test_data_only
 from src.MindVideo.models.fmri_encoder import MAEforFMRI
 from src.MindVideo.utils.sc_mbm_trainer import train_one_epoch
 from src.MindVideo.utils.sc_mbm_trainer import NativeScalerWithGradNormCount as NativeScaler
@@ -92,7 +92,8 @@ def main(config):
     if torch.cuda.device_count() > 1:
         torch.cuda.set_device(config.local_rank) 
         torch.distributed.init_process_group(backend='nccl')
-    sd = torch.load(config.pretrain_mbm_path, map_location='cpu')
+    # sd = torch.load(config.pretrain_mbm_path, map_location='cpu')
+    sd = torch.load('/content/drive/MyDrive/GOD/fmri_encoder.pth', map_location='cpu')
     config_pretrain = sd['config']
     
     output_path = os.path.join(config.root_path, 'results', 'fmri_finetune',  '%s'%(datetime.datetime.now().strftime("%d-%m-%Y-%H-%M-%S")))
@@ -121,7 +122,7 @@ def main(config):
 
     # create dataset and dataloader
     if config.dataset == "Wen":
-        _, test_set = create_Wen_dataset(path=config.bold5000_path, patch_size=config_pretrain.patch_size, 
+        _, test_set = create_Wen_test_data_only(path=config.bold5000_path, patch_size=config_pretrain.patch_size, 
                 fmri_transform=torch.FloatTensor, subjects=config.bold5000_subs)
     else:
         raise NotImplementedError

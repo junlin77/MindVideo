@@ -58,7 +58,8 @@ class Config_MBM_finetune(Config_MBM_finetune):
         self.output_path = self.root_path
         # self.kam_path = os.path.join(self.root_path, 'data/Kamitani/npz')
         # self.bold5000_path = os.path.join(self.root_path, 'data/BOLD5000')
-        self.wen_path = os.path.join(self.root_path, "data/Wen")
+        # self.wen_path = os.path.join(self.root_path, "data/Wen")
+        self.wen_path = "/content/drive/MyDrive/neurips-release/wen2017"
         self.dataset = 'Wen' # target fMRI dataset
         self.pretrain_mbm_path = os.path.join(self.root_path, f'pretrains/{self.dataset}/fmri_encoder.pth') 
 
