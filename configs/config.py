@@ -66,6 +66,7 @@ class Config_MBM_finetune(Config_MBM_finetune):
         self.include_nonavg_test = True
         self.kam_subs = ['sbj_3']
         self.bold5000_subs = ['CSI1']
+        self.wen_subs = ['subject1']
 
         # Training Parameters
         self.lr = 5.3e-5

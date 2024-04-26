@@ -122,8 +122,10 @@ def main(config):
 
     # create dataset and dataloader
     if config.dataset == "Wen":
-        _, test_set = create_Wen_test_data_only(path=config.bold5000_path, patch_size=config_pretrain.patch_size, 
-                fmri_transform=torch.FloatTensor, subjects=config.bold5000_subs)
+        # _, test_set = create_Wen_test_data_only(path=config.wen_path, patch_size=config_pretrain.patch_size, 
+        #         fmri_transform=torch.FloatTensor, subjects=config.wen_subs)
+        test_set = create_Wen_test_data_only(path=config.wen_path, patch_size=config_pretrain.patch_size, 
+                fmri_transform=torch.FloatTensor, subjects=config.wen_subs)
     else:
         raise NotImplementedError
 

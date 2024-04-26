@@ -523,7 +523,7 @@ class FmriImageCaptionDataset(Dataset):
         return self.fmri_transform(self.fmri[idx]), self.image_embeddings[idx], self.caption_embeddings[idx]
 
 
-def create_Wen_dataset(path='/content/drive/MyDrive/neurips-release/wen2017', patch_size=16, fmri_transform=identity,image_transform=identity, 
+def create_Wen_dataset(path='../data/Wen', patch_size=16, fmri_transform=identity,image_transform=identity, 
             subjects = ['subject1', 'subject2', 'subject3'], window_size=0, fps=3, **kwargs):
     
     # (18, 240, 6, 256, 256, 3)
