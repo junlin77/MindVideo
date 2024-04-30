@@ -89,6 +89,8 @@ class Config_Generative_Model:
         self.root_path = '.'
         self.kam_path = os.path.join(self.root_path, 'data/Kamitani/npz')
         self.bold5000_path = os.path.join(self.root_path, 'data/BOLD5000')
+        # self.wen_path = os.path.join(self.root_path, "data/Wen")
+        self.wen_path = "/content/drive/MyDrive/neurips-release/wen2017"
         self.roi = 'VC'
         self.patch_size = 16
 
@@ -100,6 +102,7 @@ class Config_Generative_Model:
         self.dataset = 'GOD' # GOD or BOLD5000
         self.kam_subs = ['sbj_3']
         self.bold5000_subs = ['CSI1']
+        self.wen_subs = ['subject1']
         self.pretrain_mbm_path = os.path.join(self.root_path, f'pretrains/{self.dataset}/fmri_encoder.pth') 
 
         self.img_size = 256

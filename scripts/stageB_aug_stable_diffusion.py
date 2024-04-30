@@ -1,12 +1,13 @@
 import os, sys
 import wandb
+import argparse
 from torch.utils.data import DataLoader
-from src.MindVideo.models.unet import UNet3DConditionModel
-from src.MindVideo.utils.dataset import create_Wen_dataset
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
 
+from src.MindVideo.models.unet import UNet3DConditionModel
+from src.MindVideo.utils.dataset import create_Wen_dataset
 from configs.config import Config_Generative_Model
 
 os.environ["WANDB_START_METHOD"] = "thread"
@@ -105,6 +106,13 @@ def main(config):
             # Evaluate model
             # Save checkpoint
             torch.save(model.state_dict(), f'checkpoint_{epoch}.pt')
+
+def update_config(args, config):
+    for attr in config.__dict__:
+        if hasattr(args, attr):
+            if getattr(args, attr) != None:
+                setattr(config, attr, getattr(args, attr))
+    return config
 
 if __name__ == '__main__':
     args = get_args_parser()
