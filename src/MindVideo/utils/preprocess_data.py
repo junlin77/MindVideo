@@ -3,6 +3,7 @@ import numpy as np
 import os
 import torch
 from PIL import Image
+from torchvision import transforms
 from lavis.models import load_model_and_preprocess
 
 def read_videos_and_process(directory_path, num_videos=18, num_clips=240, frames_per_clip=6, frame_height=256, frame_width=256):
@@ -79,11 +80,11 @@ def caption_videos(directory_path):
                 if not ret:
                     break
 
-                # Preprocess the frame for the BLIP model
-                image_tensor = transform_frame(frame, device)
+                # Get image from the frame 
+                raw_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
                 # vis_processors stores image transforms for "train" and "eval" (validation / testing / inference)
-                image = vis_processors["eval"](image_tensor).unsqueeze(0).to(device)
+                image = vis_processors["eval"](raw_image).unsqueeze(0).to(device)
 
                 # generate caption
                 caption = model.generate({"image": image})
@@ -94,19 +95,6 @@ def caption_videos(directory_path):
             cap.release()
 
     return video_captions
-
-def transform_frame(frame, device):
-    # Convert frame to PIL Image
-    image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-
-    # Apply image transforms
-    preprocess = transforms.Compose([
-        transforms.Resize((256, 256)),
-        transforms.ToTensor(),
-    ])
-
-    image_tensor = preprocess(image).unsqueeze(0).to(device)
-    return image_tensor
 
 if __name__ == '__main__':
     directory_path = '/Volumes/dfdf/Research/Scene Reconstruction/Data/cc2017/10_4231_R71Z42KK/video_fmri_dataset/stimuli_3fps_256'
