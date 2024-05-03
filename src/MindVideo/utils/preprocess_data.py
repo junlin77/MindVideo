@@ -73,10 +73,13 @@ def caption_videos(directory_path):
 
             # Open the video file
             cap = cv2.VideoCapture(video_path)
+            frameCount = 0
 
             # Process each frame in the video
             while cap.isOpened():
                 ret, frame = cap.read()
+
+                frameCount += 1
                 if not ret:
                     break
 
@@ -92,12 +95,14 @@ def caption_videos(directory_path):
                 # Store the caption for the current frame
                 video_captions.append(caption)
 
+                print(f'Frame: {frameCount} | Caption: {caption}')
+
             cap.release()
 
     return video_captions
 
 if __name__ == '__main__':
-    directory_path = '/Volumes/dfdf/Research/Scene Reconstruction/Data/cc2017/10_4231_R71Z42KK/video_fmri_dataset/stimuli_3fps_256'
+    directory_path = '/content/drive/MyDrive/Scene Reconstruction/stimuli_3fps'
 
     # read_videos_and_process(directory_path)
     captions = caption_videos(directory_path)
