@@ -110,7 +110,7 @@ def caption_videos(directory_path, output_file, num_videos=18, num_clips=240, fr
                 # Generate caption
                 caption = model.generate({"image": image})
 
-                print(f'Frame: {frame_count} | Caption: {caption}')
+                print(f'Video: {video_index} | Clip: {clip_index} | Frame: {frame_count} | Caption: {caption}')
 
                 # Store the caption for the current frame
                 captions_array[video_index, clip_index, frame_count - 1] = caption

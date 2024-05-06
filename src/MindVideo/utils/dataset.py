@@ -527,14 +527,16 @@ def create_Wen_dataset(path='../data/Wen', patch_size=16, fmri_transform=identit
             subjects = ['subject1', 'subject2', 'subject3'], window_size=0, fps=3, **kwargs):
     
     # (18, 240, 6, 256, 256, 3)
-    video_frames_train = np.load(os.path.join(path,'preprocessed', f'video_train_256_{fps}hz.npy'))
+    # video_frames_train = np.load(os.path.join(path,'preprocessed', f'video_train_256_{fps}hz.npy'))
+    video_frames_train = np.load(os.path.join(path,'preprocessed', f'video_test_256_{fps}hz.npy'))
     # (5, 240, 6, 256, 256, 3)
     video_frames_test = np.load(os.path.join(path,'preprocessed', f'video_test_256_{fps}hz.npy'))                             
     # (5, 240)
     test_seg_id = np.load(os.path.join(path,'preprocessed', f'test_seg_id_{fps}hz.npy'))
 
     # (18, 240, 6)
-    text_train = np.load(os.path.join(path,'preprocessed', f'text_train_256_{fps}hz.npy'))
+    # text_train = np.load(os.path.join(path,'preprocessed', f'text_train_256_{fps}hz.npy'))
+    text_train = np.load(os.path.join(path,'preprocessed', f'text_test_256_{fps}hz.npy'))
     # (5, 240, 6)
     text_test = np.load(os.path.join(path,'preprocessed', f'text_test_256_{fps}hz.npy'))
 
