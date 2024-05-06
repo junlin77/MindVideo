@@ -99,7 +99,7 @@ class Config_Generative_Model:
         # self.pretrain_gm_path = os.path.join(self.root_path, 'pretrains/ldm/text2img-large')
         # self.pretrain_gm_path = os.path.join(self.root_path, 'pretrains/ldm/layout2img')
         
-        self.dataset = 'GOD' # GOD or BOLD5000
+        self.dataset = 'Wen'
         self.kam_subs = ['sbj_3']
         self.bold5000_subs = ['CSI1']
         self.wen_subs = ['subject1']

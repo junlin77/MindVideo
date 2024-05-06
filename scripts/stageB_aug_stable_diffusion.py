@@ -1,6 +1,7 @@
 import os, sys
 import wandb
 import argparse
+import torch
 from torch.utils.data import DataLoader
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -67,22 +68,24 @@ def get_args_parser():
 def main(config):
     # create dataset and dataloader
     if config.dataset == "Wen":
-        train_set, test_set = create_Wen_dataset(path=config.wen_path, patch_size=config_pretrain.patch_size, 
+        train_set, test_set = create_Wen_dataset(path=config.wen_path, patch_size=config.patch_size, 
                 fmri_transform=torch.FloatTensor, subjects=config.wen_subs)
     else:
         raise NotImplementedError 
 
-    train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    dataloader_wen = DataLoader(train_set, batch_size=config.batch_size)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Initialize the model
     model = UNet3DConditionModel()
-    model.to(device)  # Move model to GPU if available
+    model.to(device)  
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
     for epoch in range(total_steps):
-        for batch in train_dataloader:
+        for batch in dataloader_wen:
             inputs = batch['frames']  # Assuming 'frames' are the video frames
             targets = batch['targets']  # Assuming 'targets' are the ground truth frames
 

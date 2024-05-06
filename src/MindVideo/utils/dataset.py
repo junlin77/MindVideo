@@ -545,8 +545,10 @@ def create_Wen_dataset(path='../data/Wen', patch_size=16, fmri_transform=identit
     roi_len = []
     for sub in subjects:
         # (18, 240, 3731)
+        # train_data_ = pad_to_patch_size(normalize(np.load(os.path.join(path,'preprocessed', 
+        #                                         f'fmri_train_{sub}.npy'))), patch_size)
         train_data_ = pad_to_patch_size(normalize(np.load(os.path.join(path,'preprocessed', 
-                                                f'fmri_train_{sub}.npy'))), patch_size)
+                                                f'fmri_test_{sub}.npy'))), patch_size)
         # (5, 240, 3731)
         test_data_ = pad_to_patch_size(normalize(np.load(os.path.join(path,'preprocessed', 
                                                 f'fmri_test_{sub}.npy')), mean=np.mean(train_data_), std=np.std(train_data_)), patch_size)
