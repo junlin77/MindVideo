@@ -3,6 +3,7 @@ import wandb
 import argparse
 import torch
 from torch.utils.data import DataLoader
+from MindVideo import MindVideoPipeline
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
@@ -101,24 +102,34 @@ def main(config):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Initialize the model
-    model = UNet3DConditionModel()
-    model.to(device)
+    # load models
+    unet = UNet3DConditionModel.from_pretrained_2d(checkpoint_path, subfolder="unet").to(device, dtype=dtype)
+    fmri_encoder = fMRIEncoder.from_pretrained(checkpoint_path, subfolder='fmri_encoder', num_voxels=num_voxels).to(device, dtype=dtype)
+    vae = AutoencoderKL.from_pretrained(checkpoint_path, subfolder="vae").to(device, dtype=dtype)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
-    model.train()  
+    unet.train()  
 
     for batch in dataloader_wen:
-        inputs = batch['frames'].to(device)  # Assuming 'frames' are the video frames
-        targets = batch['targets'].to(device)  # Assuming 'targets' are the ground truth frames
+        inputs = batch['image'].to(device)  
+        targets = batch['image'].to(device)  
 
-        # Add noise to inputs
-        noisy_inputs = add_noise_to_inputs(inputs, noise_type='gaussian', noise_params={'std': 0.1})
+        # create latents from image
+        # TODO: vae encode image
+
+        # Add noise to latents
+        # TODO: add noise to latents
+        # sample = add_noise_to_inputs(inputs, noise_type='gaussian', noise_params={'std': 0.1})
+
+        # Sample a random timestep for each image
+        timestep = torch.randint(1, 100, size=(dataloader_wen.batch_size,), device=device, dtype=torch.float32)
+
+        encoder_hidden_states = _encode_fmri(fmri, device, num_videos_per_fmri, do_classifier_free_guidance, negative_prompt)
 
         # Forward pass
-        outputs = model(noisy_inputs)
+        outputs = unet(sample, timestep, encoder_hidden_states)
 
         # Compute loss (e.g., MSE loss between outputs and targets)
         loss = torch.nn.functional.mse_loss(outputs, targets)
