@@ -65,50 +65,78 @@ def get_args_parser():
                         
     return parser
 
+def add_noise_to_inputs(inputs, noise_type='gaussian', noise_params=None):
+    """
+    Add noise to input data before feeding it into the model.
+
+    Args:
+        inputs (torch.Tensor): Input data tensor.
+        noise_type (str): Type of noise to add ('gaussian', 'dropout', etc.).
+        noise_params (dict): Parameters specific to the noise type.
+
+    Returns:
+        torch.Tensor: Noisy input data tensor.
+    """
+    if noise_type == 'gaussian':
+        std = noise_params.get('std', 0.1)
+        noise = torch.randn_like(inputs) * std
+        noisy_inputs = inputs + noise
+    elif noise_type == 'dropout':
+        p = noise_params.get('p', 0.1)
+        mask = torch.bernoulli(torch.full_like(inputs, 1 - p))
+        noisy_inputs = inputs * mask
+    else:
+        raise NotImplementedError(f"Noise type '{noise_type}' not implemented.")
+
+    return noisy_inputs
+
 def main(config):
-    # create dataset and dataloader
     if config.dataset == "Wen":
         train_set, test_set = create_Wen_dataset(path=config.wen_path, patch_size=config.patch_size, 
-                fmri_transform=torch.FloatTensor, subjects=config.wen_subs)
+                                                 fmri_transform=torch.FloatTensor, subjects=config.wen_subs)
     else:
-        raise NotImplementedError 
+        raise NotImplementedError("Dataset not implemented.")
 
-    dataloader_wen = DataLoader(train_set, batch_size=config.batch_size)
+    dataloader_wen = DataLoader(train_set, batch_size=config.batch_size, shuffle=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Initialize the model
     model = UNet3DConditionModel()
-    model.to(device)  
+    model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
     lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
 
-    for epoch in range(total_steps):
-        for batch in dataloader_wen:
-            inputs = batch['frames']  # Assuming 'frames' are the video frames
-            targets = batch['targets']  # Assuming 'targets' are the ground truth frames
+    model.train()  
 
-            # Forward pass
-            outputs = model(inputs)
+    for batch in dataloader_wen:
+        inputs = batch['frames'].to(device)  # Assuming 'frames' are the video frames
+        targets = batch['targets'].to(device)  # Assuming 'targets' are the ground truth frames
 
-            # Compute loss (e.g., MSE loss between outputs and targets)
-            loss = ...
+        # Add noise to inputs
+        noisy_inputs = add_noise_to_inputs(inputs, noise_type='gaussian', noise_params={'std': 0.1})
 
-            # Backpropagation
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            lr_scheduler.step()
+        # Forward pass
+        outputs = model(noisy_inputs)
 
-            # Log training metrics
-            # ...
+        # Compute loss (e.g., MSE loss between outputs and targets)
+        loss = torch.nn.functional.mse_loss(outputs, targets)
 
-        # Evaluate model and save checkpoints periodically
-        if (epoch + 1) % eval_interval == 0:
-            # Evaluate model
-            # Save checkpoint
-            torch.save(model.state_dict(), f'checkpoint_{epoch}.pt')
+        # Backpropagation
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        lr_scheduler.step()
+
+        # Log training metrics
+        # ...
+
+    # Evaluate model and save checkpoints periodically
+    if (epoch + 1) % eval_interval == 0:
+        # Evaluate model
+        # Save checkpoint
+        torch.save(model.state_dict(), f'checkpoint_{epoch}.pt')
 
 def update_config(args, config):
     for attr in config.__dict__:
