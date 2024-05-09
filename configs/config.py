@@ -109,7 +109,7 @@ class Config_Generative_Model:
 
         np.random.seed(self.seed)
         # finetune parameters
-        self.batch_size = 5 if self.dataset == 'GOD' else 25
+        self.batch_size = 14 if self.dataset == 'Wen' else 25
         self.lr = 5.3e-5
         self.num_epoch = 500
         

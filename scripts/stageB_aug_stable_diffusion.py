@@ -133,13 +133,12 @@ def main(config):
     fmri_encoder = fMRIEncoder.from_pretrained(config.checkpoint_path, subfolder='fmri_encoder', num_voxels=num_voxels).to(device, dtype=dtype)
     vae = AutoencoderKL.from_pretrained(config.checkpoint_path, subfolder="vae").to(device, dtype=dtype)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.1)
-
+    vae.eval()
+    fmri_encoder.eval()
     unet.train()  
 
     for batch in dataloader_wen:
-        inputs = batch['image'].to(device).to(dtype)
+        inputs = batch['image']
         targets = batch['image'].to(device)  
         fmri = batch["fmri"]
         uncon_fmri = batch["uncon_fmri"]
@@ -162,10 +161,6 @@ def main(config):
         loss = torch.nn.functional.mse_loss(outputs, targets)
 
         # Backpropagation
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        lr_scheduler.step()
 
         # Log training metrics
         # ...
