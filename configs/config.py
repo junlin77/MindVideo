@@ -126,5 +126,5 @@ class Config_Generative_Model:
         self.HW = None
         # resume check util
         self.model_meta = None
-        self.checkpoint_path = None # os.path.join(self.root_path, 'results/generation/25-08-2022-08:02:55/checkpoint.pth')
+        self.checkpoint_path = "/content/drive/MyDrive/neurips-release/pretrains/sub1" # os.path.join(self.root_path, 'results/generation/25-08-2022-08:02:55/checkpoint.pth')
         self.half_precision = True

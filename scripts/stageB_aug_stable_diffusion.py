@@ -139,7 +139,7 @@ def main(config):
     unet.train()  
 
     for batch in dataloader_wen:
-        inputs = batch['image'].to(device)  
+        inputs = batch['image'].to(device).to(dtype)
         targets = batch['image'].to(device)  
         fmri = batch["fmri"]
         uncon_fmri = batch["uncon_fmri"]
