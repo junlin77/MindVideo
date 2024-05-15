@@ -5,6 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 from diffusers import AutoencoderKL
 from MindVideo import MindVideoPipeline
+from einops import rearrange
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(parent_dir)
@@ -87,6 +88,30 @@ def add_noise(inputs, noise_type='gaussian', noise_params=None):
         raise NotImplementedError(f"Noise type '{noise_type}' not implemented.")
 
     return noisy_inputs
+
+def encode_video(self, video):
+    dtype = self.vae.dtype
+    print(f'Encoding video of shape: {video.shape} at {dtype}')
+    
+    # Ensure the video is in the correct range and format
+    video = (video - 0.5) * 2  # Scale video to [-1, 1]
+    video = torch.tensor(video, dtype=dtype).to(self.device)
+    
+    # Reshape video to match the expected input shape for the encoder
+    video_length = video.shape[2]
+    video = rearrange(video, "b c f h w -> (b f) c h w")
+    
+    # Encode the video to get the latents
+    with torch.no_grad():
+        latents = self.vae.encode(video).latent_dist.sample()
+    
+    # Reshape latents to the original latent shape
+    latents = rearrange(latents, "(b f) c h w -> b c f h w", f=video_length)
+    
+    # Scale the latents to match the scale used during decoding
+    latents = latents * 0.18215
+    
+    return latents
 
 @torch.no_grad()                    
 def _encode_fmri(fmri_encoder, fmri, device, num_videos_per_fmri, do_classifier_free_guidance, negative_prompt):
