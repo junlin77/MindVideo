@@ -89,29 +89,26 @@ def add_noise(inputs, noise_type='gaussian', noise_params=None):
 
     return noisy_inputs
 
-def encode_video(vae, video, dtype):
-    dtype = vae.dtype
-
+def encode_video(vae, video, dtype, device):
     print(f'Encoding video with shape: {video.shape} at {dtype}')
-    video = video.to(dtype=dtype)
+    video = video.to(device=device, dtype=dtype)
 
     # Ensure the video is in the correct range and format
     video = (video - 0.5) * 2  # Scale video to [-1, 1]
-    
+
     # Reshape video to match the expected input shape for the encoder
-    video_length = video.shape[2]
     batch_size, frames, height, width, channels = video.shape
-    video = rearrange(video, "b c f h w -> (b f) c h w")
-    
+    video = rearrange(video, "b f h w c -> (b f) c h w")
+
     # Encode the video to get the latents
     latents = vae.encode(video).latent_dist.sample()
-    
+
     # Reshape latents to the original latent shape
-    latents = rearrange(latents, "(b f) c h w -> b c f h w", f=video_length)
-    
+    latents = rearrange(latents, "(b f) c h w -> b c f h w", b=batch_size, f=frames)
+
     # Scale the latents to match the scale used during decoding
     latents = latents * 0.18215
-    
+
     return latents
 
 @torch.no_grad()                    
@@ -168,9 +165,9 @@ def main(config):
         targets = batch['image'].to(device)  
         fmri = batch["fmri"]
         uncon_fmri = batch["uncon_fmri"]
-
+        
         # create latents from image
-        latents = encode_video(vae, inputs, dtype)
+        latents = encode_video(vae, inputs, dtype, device)
 
         # Add noise to latents
         noisy_latents = add_noise(latents, noise_type='gaussian', noise_params={'std': 0.1})

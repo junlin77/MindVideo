@@ -109,7 +109,8 @@ class Config_Generative_Model:
 
         np.random.seed(self.seed)
         # finetune parameters
-        self.batch_size = 14 if self.dataset == 'Wen' else 25
+        # self.batch_size = 14 if self.dataset == 'Wen' else 25
+        self.batch_size = 4 if self.dataset == 'Wen' else 25 # colab constraint
         self.lr = 5.3e-5
         self.num_epoch = 500
         
