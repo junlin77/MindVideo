@@ -141,7 +141,7 @@ def _encode_fmri(fmri_encoder, fmri, device, num_videos_per_fmri, do_classifier_
 def main(config):
     if config.dataset == "Wen":
         train_set, test_set = create_Wen_dataset(path=config.wen_path, patch_size=config.patch_size, 
-                                                 fmri_transform=torch.FloatTensor, subjects=config.wen_subs)
+                                                 fmri_transform=torch.FloatTensor, subjects=config.wen_subs, window_size=2)
         num_voxels = test_set.num_voxels
     else:
         raise NotImplementedError("Dataset not implemented.")
@@ -165,7 +165,7 @@ def main(config):
         targets = batch['image'].to(device)  
         fmri = batch["fmri"]
         uncon_fmri = batch["uncon_fmri"]
-        
+
         # create latents from image
         latents = encode_video(vae, inputs, dtype, device)
 
