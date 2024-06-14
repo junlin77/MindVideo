@@ -10,11 +10,26 @@ import torch.nn.functional as F
 from MindVideo import MindVideoPipeline
 from dataclasses import dataclass
 
+from torch.optim.lr_scheduler import LambdaLR
+from diffusers import DDPMScheduler
+import torch.optim as optim
+
+import os, sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(parent_dir)
+
+from src.MindVideo.models.unet import UNet3DConditionModel
+from src.MindVideo.utils.dataset import create_Wen_dataset
+from src.MindVideo.models.fmri_encoder import fMRIEncoder
+from torch.utils.data import DataLoader
+from diffusers import AutoencoderKL
+from einops import rearrange
+
 @dataclass
 class TrainingConfig:
     image_size = 128  # the generated image resolution
-    train_batch_size = 16
-    eval_batch_size = 16  # how many images to sample during evaluation
+    train_batch_size = 2
+    eval_batch_size = 2  # how many images to sample during evaluation
     num_epochs = 50
     gradient_accumulation_steps = 1
     learning_rate = 1e-4
@@ -29,8 +44,14 @@ class TrainingConfig:
     hub_private_repo = False
     overwrite_output_dir = True  # overwrite the old model when re-running the notebook
     seed = 3407
+    checkpoint_path = "/content/drive/MyDrive/neurips-release/pretrains/sub1" # os.path.join(self.root_path, 'results/generation/25-08-2022-08:02:55/checkpoint.pth')
+    wen_path = "/content/drive/MyDrive/neurips-release/wen2017"
+    patch_size = 16
+    wen_subs = ['subject1']
+    batch_size = train_batch_size
+    half_precision = True
 
-def train_unet_loop(config, unet, vae, fmri_encoder, noise_scheduler, optimizer, train_dataloader, lr_scheduler):
+def train_unet_loop(config, unet, vae, fmri_encoder, noise_scheduler, optimizer, train_dataloader, lr_scheduler, device, dtype):
     # Initialize accelerator and tensorboard logging
     accelerator = Accelerator(
         mixed_precision=config.mixed_precision,
@@ -64,13 +85,15 @@ def train_unet_loop(config, unet, vae, fmri_encoder, noise_scheduler, optimizer,
         progress_bar.set_description(f"Epoch {epoch}")
 
         for step, batch in enumerate(train_dataloader):
-            clean_images = batch["image"]
-            fmri = batch["fmri"]
-            uncon_fmri = batch["uncon_fmri"]
-            clean_latents = vae.encode(clean_images).sample
-            clean_latents = clean_latents * 0.18215
+            clean_images = batch["image"].to(device, dtype=dtype)
+            fmri = batch["fmri"].to(device, dtype=dtype)
+            uncon_fmri = batch["uncon_fmri"].to(device, dtype=dtype)
+            # clean_latents = vae.encode(clean_images).sample
+            # clean_latents = clean_latents * 0.18215
+            # create latents from image
+            clean_latents = encode_video(vae, clean_images, dtype, device)
             # Sample noise to add to the latents
-            noise = torch.randn(clean_latents.shape, device=clean_latents.device)
+            noise = torch.randn(clean_latents.shape, device=clean_latents.device, dtype=dtype)
             bs = clean_latents.shape[0]
 
             # Sample a random timestep for each image
@@ -120,7 +143,6 @@ def train_unet_loop(config, unet, vae, fmri_encoder, noise_scheduler, optimizer,
                 else:
                     pipeline.save_pretrained(config.output_dir)
 
-
 @torch.no_grad()                    
 def _encode_fmri(fmri_encoder, fmri, device, num_videos_per_fmri, do_classifier_free_guidance, negative_prompt):
     dtype = fmri_encoder.dtype
@@ -147,3 +169,71 @@ def _encode_fmri(fmri_encoder, fmri, device, num_videos_per_fmri, do_classifier_
         fmri_embeddings = torch.cat([uncond_embeddings, fmri_embeddings])
 
     return fmri_embeddings
+
+def encode_video(vae, video, dtype, device):
+    print(f'Encoding video with shape: {video.shape} at {dtype}')
+    video = video.to(device=device, dtype=dtype)
+
+    # Ensure the video is in the correct range and format
+    video = (video - 0.5) * 2  # Scale video to [-1, 1]
+
+    # Reshape video to match the expected input shape for the encoder
+    batch_size, frames, height, width, channels = video.shape
+    video = rearrange(video, "b f h w c -> (b f) c h w")
+
+    # Encode the video to get the latents
+    latents = vae.encode(video).latent_dist.sample()
+
+    # Reshape latents to the original latent shape
+    latents = rearrange(latents, "(b f) c h w -> b c f h w", b=batch_size, f=frames)
+
+    # Scale the latents to match the scale used during decoding
+    latents = latents * 0.18215
+
+    return latents
+
+if __name__ == '__main__':
+    config = TrainingConfig()
+
+    train_set, test_set = create_Wen_dataset(path=config.wen_path, patch_size=config.patch_size, 
+                                                 fmri_transform=torch.FloatTensor, subjects=config.wen_subs, window_size=2)
+    num_voxels = test_set.num_voxels
+    train_dataloader = DataLoader(train_set, batch_size=config.batch_size, shuffle=True)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    dtype = torch.float16 if config.half_precision else torch.float32
+    unet = UNet3DConditionModel.from_pretrained_2d(config.checkpoint_path, subfolder="unet").to(device, dtype=dtype)
+    fmri_encoder = fMRIEncoder.from_pretrained(config.checkpoint_path, subfolder='fmri_encoder', num_voxels=num_voxels).to(device, dtype=dtype)
+    vae = AutoencoderKL.from_pretrained(config.checkpoint_path, subfolder="vae").to(device, dtype=dtype)
+
+    # Define the noise scheduler
+    noise_scheduler = DDPMScheduler(num_train_timesteps=1000)
+
+    # Define the optimizer
+    optimizer = optim.AdamW(unet.parameters(), lr=1e-4)
+
+    # Define the learning rate scheduler with warmup
+    def get_scheduler(optimizer, num_warmup_steps, num_training_steps):
+        def lr_lambda(current_step):
+            if current_step < num_warmup_steps:
+                return float(current_step) / float(max(1, num_warmup_steps))
+            return max(
+                0.0, float(num_training_steps - current_step) / float(max(1, num_training_steps - num_warmup_steps))
+            )
+        return LambdaLR(optimizer, lr_lambda)
+
+    # Assuming num_training_steps is the total number of steps in your training loop
+    num_training_steps = config.num_epochs * len(train_dataloader)
+    num_warmup_steps = config.lr_warmup_steps
+
+    lr_scheduler = get_scheduler(optimizer, num_warmup_steps, num_training_steps)
+    train_unet_loop(config, 
+                    unet, 
+                    vae, 
+                    fmri_encoder, 
+                    noise_scheduler, 
+                    optimizer, 
+                    train_dataloader, 
+                    lr_scheduler,
+                    device, 
+                    dtype)
