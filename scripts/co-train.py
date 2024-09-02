@@ -1,4 +1,4 @@
-# Author: Sijin Yu
+# Author: Jun Lin Liow
 
 from accelerate import Accelerator
 from huggingface_hub import create_repo, upload_folder
@@ -212,7 +212,7 @@ if __name__ == '__main__':
     noise_scheduler = DDPMScheduler(num_train_timesteps=1000)
 
     # Define the optimizer
-    optimizer = optim.AdamW(unet.parameters(), lr=2e-5)
+    optimizer_unet = optim.AdamW(unet.parameters(), lr=2e-5)
     optimizer_fmri = optim.AdamW(fmri_encoder.parameters(), lr=3e-5)
 
     # Define the learning rate scheduler with warmup
@@ -229,13 +229,14 @@ if __name__ == '__main__':
     num_training_steps = config.num_epochs * len(train_dataloader)
     num_warmup_steps = config.lr_warmup_steps
 
-    lr_scheduler = get_scheduler(optimizer, num_warmup_steps, num_training_steps)
+    lr_scheduler = get_scheduler(optimizer_unet, num_warmup_steps, num_training_steps)
     train_unet_loop(config, 
                     unet, 
                     vae, 
                     fmri_encoder, 
                     noise_scheduler, 
-                    optimizer, 
+                    optimizer_unet,
+                    optimizer_fmri, 
                     train_dataloader, 
                     lr_scheduler,
                     device, 
