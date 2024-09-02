@@ -28,7 +28,7 @@ from einops import rearrange
 @dataclass
 class TrainingConfig:
     image_size = 128  # the generated image resolution
-    train_batch_size = 2
+    train_batch_size = 1
     eval_batch_size = 2  # how many images to sample during evaluation
     num_epochs = 50
     gradient_accumulation_steps = 1
@@ -36,7 +36,7 @@ class TrainingConfig:
     lr_warmup_steps = 500
     save_image_epochs = 10
     save_model_epochs = 30
-    mixed_precision = "fp16"  # `no` for float32, `fp16` for automatic mixed precision
+    mixed_precision = "no"  # `no` for float32, `fp16` for automatic mixed precision
     output_dir = "logs"  # the model name locally and on the HF Hub
 
     push_to_hub = False  # whether to upload the saved model to the HF Hub
@@ -106,12 +106,18 @@ def train_unet_loop(config, unet, vae, fmri_encoder, noise_scheduler, optimizer,
             # (this is the forward diffusion process)
             noisy_latents = noise_scheduler.add_noise(clean_latents, noise, timesteps)
             
-            fmri_embeddings = _encode_fmri(fmri_encoder, fmri, fmri_encoder.device, 1, True, uncon_fmri)
+            fmri_embeddings = _encode_fmri(fmri_encoder, fmri, fmri_encoder.device, 1, False, uncon_fmri)
             
             with accelerator.accumulate(unet):
+                print(f"clean_images dtype: {clean_images.dtype}")
+                print(f"fmri dtype: {fmri.dtype}")
+                print(f"uncon_fmri dtype: {uncon_fmri.dtype}")
+
                 # Predict the noise residual
                 noise_pred = unet(noisy_latents, timesteps, return_dict=False, encoder_hidden_states=fmri_embeddings)[0]
                 loss = F.mse_loss(noise_pred, noise)
+                print(f"Loss dtype: {loss.dtype}")
+
                 accelerator.backward(loss)
 
                 accelerator.clip_grad_norm_(unet.parameters(), 1.0)
