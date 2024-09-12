@@ -1,4 +1,4 @@
-# Author: Sijin Yu
+# Author: Jun Lin Liow
 
 from accelerate import Accelerator
 from huggingface_hub import create_repo, upload_folder
@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from torch.optim.lr_scheduler import LambdaLR
 from diffusers import DDPMScheduler
 import torch.optim as optim
+from torch.cuda.amp import autocast
 
 import os, sys
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -21,6 +22,7 @@ sys.path.append(parent_dir)
 from src.MindVideo.models.unet import UNet3DConditionModel
 from src.MindVideo.utils.dataset import create_Wen_dataset
 from src.MindVideo.models.fmri_encoder import fMRIEncoder
+from transformers import CLIPTextModel, CLIPTokenizer
 from torch.utils.data import DataLoader
 from diffusers import AutoencoderKL
 from einops import rearrange
@@ -51,7 +53,7 @@ class TrainingConfig:
     batch_size = train_batch_size
     half_precision = True
 
-def train_unet_loop(config, unet, vae, fmri_encoder, noise_scheduler, optimizer, train_dataloader, lr_scheduler, device, dtype):
+def train_unet_loop(config, unet, vae, fmri_encoder, text_encoder, tokenizer, noise_scheduler, optimizer, train_dataloader, lr_scheduler, device, dtype):
     # Initialize accelerator and tensorboard logging
     accelerator = Accelerator(
         mixed_precision=config.mixed_precision,
@@ -74,9 +76,15 @@ def train_unet_loop(config, unet, vae, fmri_encoder, noise_scheduler, optimizer,
     unet, vae, fmri_encoder, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
         unet, vae, fmri_encoder, optimizer, train_dataloader, lr_scheduler
     )
-    
-    vae.eval()
-    fmri_encoder.eval()
+
+    # Move text_encode and vae to gpu and cast to weight_dtype
+    text_encoder.to(accelerator.device, dtype=dtype)
+    vae.to(accelerator.device, dtype=dtype)
+
+    # Freeze vae and fmri_encoder
+    vae.requires_grad_(False)
+    fmri_encoder.requires_grad_(False)
+
     global_step = 0
 
     # Now you train the unet
@@ -85,42 +93,74 @@ def train_unet_loop(config, unet, vae, fmri_encoder, noise_scheduler, optimizer,
         progress_bar.set_description(f"Epoch {epoch}")
 
         for step, batch in enumerate(train_dataloader):
-            clean_images = batch["image"].to(device, dtype=dtype)
-            fmri = batch["fmri"].to(device, dtype=dtype)
-            uncon_fmri = batch["uncon_fmri"].to(device, dtype=dtype)
-            # clean_latents = vae.encode(clean_images).sample
-            # clean_latents = clean_latents * 0.18215
-            # create latents from image
-            clean_latents = encode_video(vae, clean_images, dtype, device)
-            # Sample noise to add to the latents
-            noise = torch.randn(clean_latents.shape, device=clean_latents.device, dtype=dtype)
-            bs = clean_latents.shape[0]
 
-            # Sample a random timestep for each image
-            timesteps = torch.randint(
-                0, noise_scheduler.config.num_train_timesteps, (bs,), device=clean_latents.device,
-                dtype=torch.int64
-            )
-
-            # Add noise to the clean images according to the noise magnitude at each timestep
-            # (this is the forward diffusion process)
-            noisy_latents = noise_scheduler.add_noise(clean_latents, noise, timesteps)
-            
-            fmri_embeddings = _encode_fmri(fmri_encoder, fmri, fmri_encoder.device, 1, False, uncon_fmri)
-            
             with accelerator.accumulate(unet):
-                print(f"clean_images dtype: {clean_images.dtype}")
-                print(f"fmri dtype: {fmri.dtype}")
-                print(f"uncon_fmri dtype: {uncon_fmri.dtype}")
+                clean_images = batch["image"].to(device, dtype)
+                text = [t[0] for t in batch["text"]]
+                combined_text = " ".join(text)
 
-                # Predict the noise residual
-                noise_pred = unet(noisy_latents, timesteps, return_dict=False, encoder_hidden_states=fmri_embeddings)[0]
-                loss = F.mse_loss(noise_pred, noise)
-                print(f"Loss dtype: {loss.dtype}")
+                # fmri = batch["fmri"].to(device, dtype) # torch.Size([1, 2, 6016])
+                # uncon_fmri = batch["uncon_fmri"].to(device, dtype)
 
+                # Convert videos to latent space
+                video_length = clean_images.shape[1]
+                clean_images = rearrange(clean_images, "b f h w c -> (b f) c h w")
+                latents = vae.encode(clean_images).latent_dist.sample()
+                latents = rearrange(latents, "(b f) c h w -> b c f h w", f=video_length)
+                latents = latents * 0.18215
+
+                # Sample noise to add to the latents
+                noise = torch.randn(latents.shape, device=latents.device, dtype=dtype)
+                bs = latents.shape[0]
+
+                # Sample a random timestep for each image
+                timesteps = torch.randint(
+                    0, noise_scheduler.config.num_train_timesteps, (bs,), device=device,
+                    dtype=torch.int64
+                )
+                timesteps = timesteps.long()
+
+                # Add noise to the clean images according to the noise magnitude at each timestep
+                # (this is the forward diffusion process)
+                noisy_latents = noise_scheduler.add_noise(latents, noise, timesteps)
+                
+                # Get the text embedding for conditioning
+                tokenized = tokenizer(combined_text, return_tensors="pt", padding=True, max_length=77, truncation=True)
+                print(tokenized['input_ids'].shape)
+
+                # Move the tokenized tensors to the specified device
+                tokenized = {key: value.to(device) for key, value in tokenized.items()}
+                text_embeddings = text_encoder(input_ids=tokenized['input_ids'])[0]
+                
+                # Define the linear layer
+                linear_layer = torch.nn.Linear(512, 768).to(device)
+
+                # Ensure text_embeddings is on the same device and has the correct dtype
+                text_embeddings = text_embeddings.to(device).to(linear_layer.weight.dtype)
+
+                # Apply the linear layer to project the text embeddings
+                projected_embeddings = linear_layer(text_embeddings) 
+                    
+                # fmri_embeddings = _encode_fmri(fmri_encoder, fmri, fmri_encoder.device, 1, False, uncon_fmri)
+
+                # Get the target for loss depending on the prediction type
+                if noise_scheduler.prediction_type == "epsilon":
+                    target = noise
+                elif noise_scheduler.prediction_type == "v_prediction":
+                    target = noise_scheduler.get_velocity(latents, noise, timesteps)
+                else:
+                    raise ValueError(f"Unknown prediction type {noise_scheduler.prediction_type}")
+
+                print(noisy_latents.shape)
+                with autocast():
+                    # Predict the noise residual and compute loss
+                    model_pred = unet(noisy_latents, timesteps, encoder_hidden_states=projected_embeddings).sample
+                    loss = F.mse_loss(model_pred.float(), target.float(), reduction="mean")
+
+                # Backpropagate
                 accelerator.backward(loss)
-
-                accelerator.clip_grad_norm_(unet.parameters(), 1.0)
+                if accelerator.sync_gradients:
+                    accelerator.clip_grad_norm_(unet.parameters(), 1.0)
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
@@ -181,7 +221,7 @@ def encode_video(vae, video, dtype, device):
     video = video.to(device=device, dtype=dtype)
 
     # Ensure the video is in the correct range and format
-    video = (video - 0.5) * 2  # Scale video to [-1, 1]
+    # video = (video - 0.5) * 2  # Scale video to [-1, 1]
 
     # Reshape video to match the expected input shape for the encoder
     batch_size, frames, height, width, channels = video.shape
@@ -211,6 +251,8 @@ if __name__ == '__main__':
     unet = UNet3DConditionModel.from_pretrained_2d(config.checkpoint_path, subfolder="unet").to(device, dtype=dtype)
     fmri_encoder = fMRIEncoder.from_pretrained(config.checkpoint_path, subfolder='fmri_encoder', num_voxels=num_voxels).to(device, dtype=dtype)
     vae = AutoencoderKL.from_pretrained(config.checkpoint_path, subfolder="vae").to(device, dtype=dtype)
+    tokenizer = CLIPTokenizer.from_pretrained("openai/clip-vit-base-patch32")
+    text_encoder = CLIPTextModel.from_pretrained("openai/clip-vit-base-patch32")
 
     # Define the noise scheduler
     noise_scheduler = DDPMScheduler(num_train_timesteps=1000)
@@ -237,6 +279,8 @@ if __name__ == '__main__':
                     unet, 
                     vae, 
                     fmri_encoder, 
+                    text_encoder,
+                    tokenizer,
                     noise_scheduler, 
                     optimizer, 
                     train_dataloader, 
